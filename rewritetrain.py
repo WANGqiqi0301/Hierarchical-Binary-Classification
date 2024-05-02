@@ -63,9 +63,13 @@ if __name__ == '__main__':
 
 
             batch_x, batch_y1, batch_y2 = sample['image'].to(device), sample['label_1'].to(device), sample['label_2'].to(device)
+            # 输入的数据和标签
+
             optimizer.zero_grad()
 
             superclass_pred,subclass_pred = model(batch_x)
+            # 预测的两个标签结果
+            
             prediction = [superclass_pred, subclass_pred]
             dloss = HLN.calculate_dloss(prediction, [batch_y1, batch_y2])
             lloss = HLN.calculate_lloss(prediction, [batch_y1, batch_y2])

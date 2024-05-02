@@ -32,7 +32,8 @@ class BottleNeck(nn.Module):
                 nn.Conv2d(in_channels=in_channels, out_channels=expansion*out_channels, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(num_features=out_channels*expansion)
             )
-
+        # 如果inchannel的维度和outchannel*expansion的维度不同，那么就用indentity_connnect
+        # 调整x的维度与x相同，这样他们才能相加。
         if self.use_cbam:
             self.cbam = CBAM(channel_in=out_channels*expansion)
 
@@ -77,7 +78,7 @@ class ResNet50(nn.Module):
         self.layer4 = self.make_layer(out_channels=512, num_blocks=self.num_blocks[3], stride=2, use_cbam=use_cbam)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        self.linear_lvl1 = nn.Linear(512*self.expansion, num_classes[0])
+        self.linear_lvl1 = nn.Linear(512*self.expansion, num_classes[0]) #线性映射，从512*self.expansion到子类大小
         self.linear_lvl2 = nn.Linear(512*self.expansion, num_classes[1])
 
         self.softmax_reg1 = nn.Linear(num_classes[0], num_classes[0])
@@ -88,13 +89,17 @@ class ResNet50(nn.Module):
     def make_layer(self, out_channels, num_blocks, stride, use_cbam):
         '''To construct the bottleneck layers.
         '''
+        # 构造了一层，这一层中由多个残差快组成
+        # num_blocks: 残差块个数，out_channels: 每个残差块输出的通道数
+        # stride:第一个残差块的步长
+        # strides 列表：这个列表确定了每个残差块的步长。第一个块可能有一个不同的步长（通常为下采样用），而后续块的步长设置为1，保持特征图的尺寸不变。
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
         for stride in strides:
             layers.append(BottleNeck(in_channels=self.in_channels, out_channels=out_channels, stride=stride, expansion=self.expansion, use_cbam=use_cbam))
             self.in_channels = out_channels * self.expansion
         return nn.Sequential(*layers)
-
+    # 最后返回的值的大小其实是 out_channels*expansion
 
     def forward(self, x):
         '''Forward propagation of ResNet-50.
