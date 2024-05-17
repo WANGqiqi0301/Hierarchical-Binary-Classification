@@ -65,7 +65,7 @@ class ResNet50(nn.Module):
         super(ResNet50, self).__init__()
 
         self.in_channels = 64
-        self.expansion = 4
+        self.expansion = 4 
         self.num_blocks = [3, 4, 6, 3]
 
         self.conv_block1 = nn.Sequential(nn.Conv2d(kernel_size=3, stride=1, in_channels=image_depth, out_channels=self.in_channels, padding=1, bias=False),
@@ -80,10 +80,11 @@ class ResNet50(nn.Module):
 
         self.linear_lvl1 = nn.Linear(512*self.expansion, num_classes[0]) #线性映射，从512*self.expansion到子类大小
         self.linear_lvl2 = nn.Linear(512*self.expansion, num_classes[1])
+        # self.linear_lvl3 = nn.Linear(512*self.expansion, num_classes[2])
 
         self.softmax_reg1 = nn.Linear(num_classes[0], num_classes[0])
         self.softmax_reg2 = nn.Linear(num_classes[0]+num_classes[1], num_classes[1])
-
+        # self.softmax_reg3 = nn.Linear(num_classes[0]+num_classes[1]+num+class[2], num_classes[2])
 
 
     def make_layer(self, out_channels, num_blocks, stride, use_cbam):
@@ -115,7 +116,6 @@ class ResNet50(nn.Module):
 
         level_1 = self.softmax_reg1(self.linear_lvl1(x))
         level_2 = self.softmax_reg2(torch.cat((level_1, self.linear_lvl2(x)), dim=1))
+        # level_3 = self.softmax_reg3(torch.cat((level_1, level_2, self.linear_lvl3(x)), dim=1))
 
-
-
-        return level_1, level_2
+        return level_1, level_2#, level_3

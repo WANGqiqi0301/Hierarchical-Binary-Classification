@@ -1,0 +1,156 @@
+# pytorch mlp for binary classification
+from numpy import vstack
+from pandas import read_csv
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+from torch.utils.data import random_split
+from torch import Tensor
+from torch.nn import Linear
+from torch.nn import ReLU
+from torch.nn import Sigmoid
+from torch.nn import Module
+from torch.optim import SGD
+from torch.nn import BCELoss
+from torch.nn.init import kaiming_uniform_
+from torch.nn.init import xavier_uniform_
+from sklearn.metrics import f1_score
+from tqdm import tqdm
+from sklearn.preprocessing import MinMaxScaler
+import torch
+
+class CSVDataset(Dataset):
+    def __init__(self,path):
+        df = read_csv(path)
+        df = df.head(1000000)
+        self.X = df.values[:,:-3]
+        self.y = df.values[:,-3:-2]
+        self.X = self.X.astype('float32')
+        self.y = self.y.astype('float32')
+        self.y = self.y.reshape((len(self.y), 1))
+        scaler = MinMaxScaler()
+        self.X = scaler.fit_transform(self.X)
+    def __len__(self):
+        return len(self.X)
+    
+    def __getitem__(self, idx):
+        return [self.X[idx],self.y[idx]]
+    
+
+class MLP(Module):
+    def __init__(self,n_inputs):
+        super(MLP,self).__init__()
+        # input to first hidden layer
+        self.hidden1 = Linear(n_inputs, 8)
+        kaiming_uniform_(self.hidden1.weight, nonlinearity='relu')
+        self.act1 = ReLU()
+        # second hidden layer
+        self.hidden2 = Linear(32, 8)
+        kaiming_uniform_(self.hidden2.weight, nonlinearity='relu')
+        self.act2 = ReLU()
+        # third hidden layer and output
+        self.hidden3 = Linear(8, 1)
+        xavier_uniform_(self.hidden3.weight)
+        self.act3 = Sigmoid()
+
+    def forward(self,X):
+        X = self.hidden1(X)
+        X = self.act1(X)
+        # X = self.hidden2(X)
+        # X = self.act2(X)
+        X = self.hidden3(X)
+        X = self.act3(X)
+        return X        
+        
+def prepare_data(path):
+    dataset = CSVDataset(path)
+    train = dataset
+    train_dl = DataLoader(train, batch_size=128, shuffle=True)
+    return train_dl
+
+# train the model
+def train_model(train_dl, model):
+    # define the optimization
+    criterion = F1Loss()
+    optimizer = SGD(model.parameters(), lr=0.005)
+    # enumerate epochs
+
+    for epoch in range(10):
+        losses = []
+        loop = tqdm(enumerate(train_dl), total =len(train_dl))
+        # enumerate mini batches
+        early_stop_threshold = -0.7
+        for i, (inputs, targets) in loop:
+            # clear the gradients
+            optimizer.zero_grad()
+            # compute the model output
+            yhat = model(inputs)
+            # calculate loss
+            loss = criterion(yhat, targets)
+            losses.append(loss)
+            # credit assignment
+            loss.backward()
+            # update model weights
+            optimizer.step()
+            loop.set_description(f'Epoch [{epoch+1}/{100}]')
+            loop.set_postfix(loss = loss.item())
+        if loss < early_stop_threshold:
+            print(f"Early stopping triggered. Loss < {early_stop_threshold}")
+            break
+
+# evaluate the model
+def evaluate_model(test_dl, model):
+    predictions, actuals = list(), list()
+    for i, (inputs, targets) in enumerate(test_dl):
+        # evaluate the model on the test set
+        yhat = model(inputs)
+        # retrieve numpy array
+        yhat = yhat.detach().numpy()
+        actual = targets.numpy()
+        actual = actual.reshape((len(actual), 1))
+        # round to class values
+        yhat = yhat.round()
+        # store
+        predictions.append(yhat)
+        actuals.append(actual)
+    predictions, actuals = vstack(predictions), vstack(actuals)
+    # calculate accuracy
+    f1 = f1_score(actuals, predictions)
+    return f1
+ 
+# make a class prediction for one row of data
+def predict(row, model):
+    # convert row to data
+    row = Tensor([row])
+    # make prediction
+    yhat = model(row)
+    # retrieve numpy array
+    yhat = yhat.detach().numpy()
+    return yhat
+class F1Loss(Module):
+    def __init__(self):
+        super(F1Loss, self).__init__()
+
+    def forward(self, y_pred, y_true):
+        epsilon = 1e-7  # 用于数值稳定性，避免除以零
+        tp = torch.sum(y_true * y_pred, dim=0)
+        fp = torch.sum((1 - y_true) * y_pred, dim=0)
+        fn = torch.sum(y_true * (1 - y_pred), dim=0)
+
+        precision = tp / (tp + fp + epsilon)
+        recall = tp / (tp + fn + epsilon)
+
+        f1_scores = 2 * precision * recall / (precision + recall + epsilon)
+
+        return -torch.mean(f1_scores)
+# prepare the data
+path = 'E:\phme2022\processing_data\data_training.csv'
+train_dl = prepare_data(path)
+
+model = MLP(53)
+# # train the model
+train_model(train_dl, model)
+# evaluate the model
+f1 = evaluate_model(train_dl, model)
+print(f1)
