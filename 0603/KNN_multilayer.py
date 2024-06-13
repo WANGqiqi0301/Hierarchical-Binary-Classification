@@ -37,8 +37,9 @@ X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\te
 y_train_1, y_train_2, y_train_3 = y_train[:, 0], y_train[:, 1], y_train[:, 2]
 y_test_1, y_test_2, y_test_3 = y_test[:, 0], y_test[:, 1], y_test[:, 2]
 
-# 训练KNN模型
-models = [KNeighborsClassifier(n_neighbors=5) for _ in range(3)]
+# 训练KNN模型，n_neighbors随层数变化
+n_neighbors_values = [6, 5, 4]  # 为每一层指定不同的n_neighbors值
+models = [KNeighborsClassifier(n_neighbors=n_neighbors) for n_neighbors in n_neighbors_values]
 models[0].fit(X_train, y_train_1)
 models[1].fit(X_train, y_train_2)
 models[2].fit(X_train, y_train_3)
@@ -58,6 +59,6 @@ correct_indices_layer3 = y_test_3 == predictions[2]
 correct_indices_for_layer3 = correct_indices_for_layer2 & correct_indices_layer3
 accuracy3 = np.sum(correct_indices_for_layer3) / len(y_test_1)
 
-print(f'Layer 1 Accuracy: {accuracy1}')
-print(f'Layer 2 Accuracy: {accuracy2}')
-print(f'Layer 3 Accuracy: {accuracy3}')
+print(f'Layer 1 Accuracy: {accuracy1 * 100.0:.2f}%')
+print(f'Layer 2 Accuracy: {accuracy2 * 100.0:.2f}%')
+print(f'Layer 3 Accuracy: {accuracy3 * 100.0:.2f}%')

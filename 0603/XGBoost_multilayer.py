@@ -31,15 +31,15 @@ def prepare_data(path, n_samples):
 # 加载数据
 # X_    train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatraining3.csv', 100000)
 # X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatesting3.csv', 300000)
-X_train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\train.csv', 35000)
-X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\test.csv', 15000)
+X_train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\train1.csv', 35000)
+X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\test1.csv', 15000)
 
 # 分离标签
 y_train_1, y_train_2, y_train_3 = y_train[:, 0], y_train[:, 1], y_train[:, 2]
 y_test_1, y_test_2, y_test_3 = y_test[:, 0], y_test[:, 1], y_test[:, 2]
 
 # 训练XGBoost模型
-models = [XGBClassifier() for _ in range(3)]
+models = [XGBClassifier(objective='multi:softmax', num_class=num_class, use_label_encoder=False) for num_class in [2, 3, 4]]
 models[0].fit(X_train, y_train_1)
 models[1].fit(X_train, y_train_2)
 models[2].fit(X_train, y_train_3)
@@ -53,7 +53,6 @@ accuracy1 = accuracy_score(y_test_1, predictions[0])
 
 # 第二层准确率：第一层和第二层都预测正确的样本数占总样本数的比例
 correct_indices_layer1 = y_test_1 == predictions[0]
-print(correct_indices_layer1)
 correct_indices_layer2 = y_test_2 == predictions[1]
 correct_indices_for_layer2 = correct_indices_layer1 & correct_indices_layer2
 accuracy2 = np.sum(correct_indices_for_layer2) / len(y_test_1)
@@ -63,6 +62,6 @@ correct_indices_layer3 = y_test_3 == predictions[2]
 correct_indices_for_layer3 = correct_indices_for_layer2 & correct_indices_layer3
 accuracy3 = np.sum(correct_indices_for_layer3) / len(y_test_1)
 
-print(f'Layer 1 Accuracy: {accuracy1}')
-print(f'Layer 2 Accuracy: {accuracy2}')
-print(f'Layer 3 Accuracy: {accuracy3}')
+print(f'Layer 1 Accuracy: {accuracy1 * 100.0:.2f}%')
+print(f'Layer 2 Accuracy: {accuracy2 * 100.0:.2f}%')
+print(f'Layer 3 Accuracy: {accuracy3 * 100.0:.2f}%')

@@ -81,7 +81,7 @@ def prepare_data(path,n_samples):
 # train the model
 def train_model(train_dl,test_dl, model):
     optimizer = torch.optim.SGD(model.parameters(), lr=0.005,momentum=0.7)
-    MLPloss = MultiLayerLoss(total_level=3, alpha=1, beta=0.2, p_loss=3,device='cpu')
+    MLPloss = MultiLayerLoss(total_level=3, alpha=1, beta=0.05, p_loss=3,device='cpu')
     train_epoch_loss = []
     train_level1_acc = []
     train_level2_acc = []
@@ -195,16 +195,16 @@ def set_seed(seed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-set_seed(50)  # 种子50
+set_seed(49)  # 种子50
  
 # prepare the data
 # path = 'E:\phme2022\processing_data\\data\\resample\\datatraining3.csv'
 # path_test = 'E:\\phme2022\\processing_data\\data\\resample\\datatesting3.csv'
-path = 'E:\phme2022\processing_data\\data\\resample\\train.csv'
-path_test = 'E:\\phme2022\\processing_data\\data\\resample\\test.csv'
+path = 'E:\phme2022\processing_data\\data\\resample\\train1.csv'
+path_test = 'E:\\phme2022\\processing_data\\data\\resample\\test1.csv'
 
-train_dl = prepare_data(path,100000)
-test_dl = prepare_data(path_test,300000)
+train_dl = prepare_data(path,35000)
+test_dl = prepare_data(path_test,15000)
 # test_dl = prepare_data(path_test,200000)
 model = Multi_LP(53)
 # # train the model
