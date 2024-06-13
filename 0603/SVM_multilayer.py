@@ -28,8 +28,10 @@ def prepare_data(path, n_samples):
     return dataset.X, dataset.y
 
 # 加载数据
-X_train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatraining3.csv', 100000)
-X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatesting3.csv', 300000)
+# X_train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatraining3.csv', 100000)
+# X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatesting3.csv', 300000)
+X_train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\train1.csv', 35000)
+X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\test1.csv', 15000)
 
 # 分离标签
 y_train_1, y_train_2, y_train_3 = y_train[:, 0], y_train[:, 1], y_train[:, 2]

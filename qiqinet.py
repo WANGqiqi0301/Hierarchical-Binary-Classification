@@ -6,7 +6,7 @@ from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 import torch.nn.functional as F
 from sklearn.metrics import f1_score
-
+from multi_layer_loss import MultiLayerLoss
 
 class MyDataset(Dataset):
     def __init__(self, csv_file):

@@ -28,7 +28,7 @@ def prepare_data(path, n_samples):
     return dataset.X, dataset.y
 
 # 加载数据
-# X_    train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatraining3.csv', 100000)
+# X_train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatraining3.csv', 100000)
 # X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\datatesting3.csv', 300000)
 X_train, y_train = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\train1.csv', 35000)
 X_test, y_test = prepare_data('E:\\phme2022\\processing_data\\data\\resample\\test1.csv', 15000)
@@ -38,7 +38,7 @@ y_train_1, y_train_2, y_train_3 = y_train[:, 0], y_train[:, 1], y_train[:, 2]
 y_test_1, y_test_2, y_test_3 = y_test[:, 0], y_test[:, 1], y_test[:, 2]
 
 # 训练KNN模型，n_neighbors随层数变化
-n_neighbors_values = [6, 5, 4]  # 为每一层指定不同的n_neighbors值
+n_neighbors_values = [4, 5, 6]  # 为每一层指定不同的n_neighbors值
 models = [KNeighborsClassifier(n_neighbors=n_neighbors) for n_neighbors in n_neighbors_values]
 models[0].fit(X_train, y_train_1)
 models[1].fit(X_train, y_train_2)

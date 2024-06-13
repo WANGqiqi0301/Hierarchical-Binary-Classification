@@ -1,12 +1,14 @@
 # pytorch mlp for binary classification
+import torch
 from numpy import vstack
 from pandas import read_csv
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from torch import Tensor
+import torch.nn as nn
 from torch.nn import Linear
 from torch.nn import ReLU
-from torch.nn import Sigmoid
+from torch.nn import Softmax
 from torch.nn import Module
 from torch.optim import SGD
 from torch.nn import BCELoss
@@ -21,9 +23,9 @@ class CSVDataset(Dataset):
         df = read_csv(path)
         df = df.head(n_samples)
         self.X = df.values[:,:-3]
-        self.y = df.values[:,-3:-2]
+        self.y = df.values[:,-2:-1]
         self.X = self.X.astype('float32')
-        self.y = self.y.astype('float32')
+        self.y = torch.from_numpy(self.y).long()
         self.y = self.y.reshape((len(self.y), 1))
         scaler = MinMaxScaler()
         self.X = scaler.fit_transform(self.X)
@@ -31,7 +33,7 @@ class CSVDataset(Dataset):
         return len(self.X)
     
     def __getitem__(self, idx):
-        return [self.X[idx],self.y[idx]]
+        return [self.X[idx],self.y[idx][0]]
     
 
 class MLP(Module):
@@ -42,13 +44,17 @@ class MLP(Module):
         kaiming_uniform_(self.hidden1.weight, nonlinearity='relu')
         self.act1 = ReLU()
         # second hidden layer
-        self.hidden2 = Linear(64, 8)
+        self.hidden2 = Linear(64,32)
         kaiming_uniform_(self.hidden2.weight, nonlinearity='relu')
         self.act2 = ReLU()
         # third hidden layer and output
-        self.hidden3 = Linear(8, 1)
-        xavier_uniform_(self.hidden3.weight)
-        self.act3 = Sigmoid()
+        # second hidden layer
+        self.hidden3 = Linear(32, 8)
+        kaiming_uniform_(self.hidden3.weight, nonlinearity='relu')
+        self.act3 = ReLU()
+        self.hidden4 = Linear(8, 3)
+        xavier_uniform_(self.hidden4.weight)
+        self.act4 = nn.Softmax(dim=1)
 
     def forward(self,X):
         X = self.hidden1(X)
@@ -57,6 +63,8 @@ class MLP(Module):
         X = self.act2(X)
         X = self.hidden3(X)
         X = self.act3(X)
+        X = self.hidden4(X)
+        X = self.act4(X)
         return X        
         
 def prepare_data(path,n_samples):
@@ -65,15 +73,31 @@ def prepare_data(path,n_samples):
     train_dl = DataLoader(train, batch_size=32, shuffle=True)
     return train_dl
 
+class CustomLoss(nn.Module):
+    def __init__(self, alpha0, alpha1, alpha2):
+        super(CustomLoss, self).__init__()
+        self.alpha0 = alpha0
+        self.alpha1 = alpha1
+        self.alpha2 = alpha2
+
+    def forward(self, yhat, targets):
+        ce_loss = nn.CrossEntropyLoss(reduction='none')(yhat, targets)
+        weights = torch.zeros_like(targets).float()
+        weights[targets == 0] = self.alpha0
+        weights[targets == 1] = self.alpha1
+        weights[targets == 2] = self.alpha2
+        return (ce_loss * weights).mean()
+    
 # train the model
 def train_model(train_dl, model):
-    criterion = BCELoss()
-    optimizer = SGD(model.parameters(), lr=0.02,momentum=0.5)
-
-    for epoch in range(50):
+    criterion = nn.CrossEntropyLoss()
+    # criterion = CustomLoss(1,1,1)
+    optimizer = SGD(model.parameters(), lr=0.007,momentum=0.7)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    for epoch in range(120):
         losses = []
         loop = tqdm(enumerate(train_dl), total =len(train_dl))
-        early_stop_threshold = 0.001
+        early_stop_threshold = 0.01
         for i, (inputs, targets) in loop:
             optimizer.zero_grad()
             yhat = model(inputs)
@@ -89,24 +113,31 @@ def train_model(train_dl, model):
             print(f"Early stopping triggered. Loss < {early_stop_threshold}")
             break
 
+
 # evaluate the model
 def evaluate_model(test_dl, model):
     predictions, actuals = list(), list()
     for i, (inputs, targets) in enumerate(test_dl):
         # evaluate the model on the test set
         yhat = model(inputs)
-        yhat = yhat.detach().numpy()
-        actual = targets.numpy()
-        actual = actual.reshape((len(actual), 1))
-        yhat = yhat.round()
-        predictions.append(yhat)
-        actuals.append(actual)
-    predictions, actuals = vstack(predictions), vstack(actuals)
+        _, predicted = torch.max(yhat, 1)  # Get class from softmax output
+        predictions.extend(predicted.tolist())
+        actuals.extend(targets.tolist())
+        if i == 0:
+            print("First group of predictions:", predicted.tolist())
+            print("First group of actual labels:", targets.tolist())
     # calculate confusion matrix
-    tn, fp, fn, tp = confusion_matrix(actuals, predictions).ravel()
-    # calculate f
-    f = 2*tp / (2*tp + fn + fp)
-    return f
+    cm = confusion_matrix(actuals, predictions)
+    
+    # calculate f1 score for class 1
+    tp = cm[1, 1]  # true positive: actual is 1, prediction is 1
+    fp = cm[2, 1]  # false positive: actual is 2, prediction is 1
+    fn = cm[1, 2]  # false negative: actual is 1, prediction is 2
+    # tp = cm[2, 2]  # true positive: actual is 1, prediction is 1
+    # fp = cm[0, 2]  # false positive: actual is 2, prediction is 1
+    # fn = cm[2, 0]  # false negative: actual is 1, prediction is 2
+    f1 = 2*tp / (2*tp + fp + fn)
+    return f1
  
 # make a class prediction for one row of data
 def predict(row, model):
@@ -116,10 +147,13 @@ def predict(row, model):
     return yhat
  
 # prepare the data
-path = 'E:\phme2022\processing_data\data_training.csv'
-path_test = 'E:\phme2022\processing_data\data_testing1.csv'
-train_dl = prepare_data(path,2000000)
-test_dl = prepare_data(path_test,80000)
+# path = 'E:\phme2022\processing_data\data_training.csv'
+path = 'E:\phme2022\processing_data\\resampledatatraining.csv'
+# path = 'E:\phme2022\processing_data\shortdatatraining.csv'
+# path_test = 'E:\phme2022\processing_data\data_testing1.csv'
+path_test = 'E:\phme2022\processing_data\\resampledatatesting.csv'
+train_dl = prepare_data(path,77158)
+test_dl = prepare_data(path_test,31815)
 model = MLP(53)
 # # train the model
 train_model(train_dl, model)

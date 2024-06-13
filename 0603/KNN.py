@@ -38,7 +38,7 @@ model = KNeighborsClassifier(n_neighbors=5)  # 使用默认的5个邻居
 #     accuracy = accuracy_score(y_test, y_pred)
 #     print(f"Accuracy for level {target_column+4}: {accuracy * 100.0:.2f}%")
 
-for target_column, n_neighbors in zip([-3, -2, -1], [6,5,4]):
+for target_column, n_neighbors in zip([-3, -2, -1], [4,5,6]):
     # 加载并准备数据
     X_train, y_train = load_and_prepare_data(path_train, 35000, target_column)
     X_test, y_test = load_and_prepare_data(path_test, 15000, target_column)
